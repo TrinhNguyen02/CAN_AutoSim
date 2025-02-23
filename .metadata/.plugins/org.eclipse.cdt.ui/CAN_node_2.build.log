@@ -1,0 +1,20 @@
+00:23:35 **** Incremental Build of configuration Debug for project CAN_node_2 ****
+make -j8 all 
+arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m3 -std=gnu11 -g3 -DUSE_HAL_DRIVER -DSTM32F103xB -DDEBUG -c -I../Core/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../Drivers/CMSIS/Include -I../Middlewares/Third_Party/FreeRTOS/Source/include -I../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS -I../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Core/Src/main.o"
+arm-none-eabi-gcc -o "CAN_node_2.elf" @"objects.list"   -mcpu=cortex-m3 -T"D:\STM32_PROJECT\CAN_AutoSim\CAN_node_2\STM32F103C8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="CAN_node_2.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Finished building target: CAN_node_2.elf
+ 
+arm-none-eabi-objdump -h -S  CAN_node_2.elf  > "CAN_node_2.list"
+arm-none-eabi-objcopy  -O binary  CAN_node_2.elf  "CAN_node_2.bin"
+arm-none-eabi-size   CAN_node_2.elf 
+   text	   data	    bss	    dec	    hex	filename
+   9732	     24	   5576	  15332	   3be4	CAN_node_2.elf
+Finished building: default.size.stdout
+ 
+Finished building: CAN_node_2.bin
+ 
+Finished building: CAN_node_2.list
+ 
+
+00:23:36 Build Finished. 0 errors, 0 warnings. (took 1s.46ms)
+

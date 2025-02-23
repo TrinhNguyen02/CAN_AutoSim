@@ -1,0 +1,77 @@
+11:02:56 **** Incremental Build of configuration Debug for project CAN_node_1 ****
+make -j8 all 
+arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m3 -std=gnu11 -g3 -DUSE_HAL_DRIVER -DSTM32F103xB -DDEBUG -c -I../Core/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../Drivers/CMSIS/Include -I../Middlewares/Third_Party/FreeRTOS/Source/include -I../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS -I../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Core/Src/main.o"
+In file included from ../Core/Src/main.c:21:0:
+../Core/Inc/main.h:62:65: warning: useless storage class specifier in empty declaration
+ typedef enum light_mode_t {stop_light, light_left, light_right, light_hazard};
+                                                                 ^~~~~~~~~~~~
+../Core/Src/main.c: In function 'prepare_buff_send':
+../Core/Src/main.c:139:15: warning: passing argument 1 of 'clear_buff' from incompatible pointer type [-Wincompatible-pointer-types]
+    clear_buff(&tx_data, sizeof(uint8_t)*8);
+               ^
+../Core/Src/main.c:98:6: note: expected 'uint8_t * {aka unsigned char *}' but argument is of type 'uint8_t (*)[8] {aka unsigned char (*)[8]}'
+ void clear_buff (uint8_t * buff_clear, size_t num)
+      ^~~~~~~~~~
+../Core/Src/main.c:140:15: warning: assignment from incompatible pointer type [-Wincompatible-pointer-types]
+    p_buff_ptr = &current_value;
+               ^
+../Core/Src/main.c:166:15: warning: passing argument 1 of 'clear_buff' from incompatible pointer type [-Wincompatible-pointer-types]
+    clear_buff(&tx_data, sizeof(uint8_t)*8);
+               ^
+../Core/Src/main.c:98:6: note: expected 'uint8_t * {aka unsigned char *}' but argument is of type 'uint8_t (*)[8] {aka unsigned char (*)[8]}'
+ void clear_buff (uint8_t * buff_clear, size_t num)
+      ^~~~~~~~~~
+../Core/Src/main.c:167:15: warning: assignment from incompatible pointer type [-Wincompatible-pointer-types]
+    p_buff_ptr = &current_value;
+               ^
+../Core/Src/main.c:191:15: warning: passing argument 1 of 'clear_buff' from incompatible pointer type [-Wincompatible-pointer-types]
+    clear_buff(&tx_data, sizeof(uint8_t)*8);
+               ^
+../Core/Src/main.c:98:6: note: expected 'uint8_t * {aka unsigned char *}' but argument is of type 'uint8_t (*)[8] {aka unsigned char (*)[8]}'
+ void clear_buff (uint8_t * buff_clear, size_t num)
+      ^~~~~~~~~~
+../Core/Src/main.c: In function 'dashboard':
+../Core/Src/main.c:221:2: warning: implicit declaration of function 'read_sw_button' [-Wimplicit-function-declaration]
+  read_sw_button();
+  ^~~~~~~~~~~~~~
+../Core/Src/main.c:233:14: warning: passing argument 1 of 'clear_buff' from incompatible pointer type [-Wincompatible-pointer-types]
+   clear_buff(&tx_data, sizeof(uint8_t)*8);
+              ^
+../Core/Src/main.c:98:6: note: expected 'uint8_t * {aka unsigned char *}' but argument is of type 'uint8_t (*)[8] {aka unsigned char (*)[8]}'
+ void clear_buff (uint8_t * buff_clear, size_t num)
+      ^~~~~~~~~~
+../Core/Src/main.c: At top level:
+../Core/Src/main.c:244:6: warning: conflicting types for 'read_sw_button'
+ void read_sw_button ()
+      ^~~~~~~~~~~~~~
+../Core/Src/main.c:221:2: note: previous implicit declaration of 'read_sw_button' was here
+  read_sw_button();
+  ^~~~~~~~~~~~~~
+../Core/Src/main.c: In function 'StartTask02':
+../Core/Src/main.c:743:28: warning: passing argument 2 of 'HAL_ADC_Start_DMA' from incompatible pointer type [-Wincompatible-pointer-types]
+  HAL_ADC_Start_DMA(&hadc1, &adc_value, 2);
+                            ^
+In file included from ../Core/Inc/stm32f1xx_hal_conf.h:273:0,
+                 from ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h:30,
+                 from ../Core/Inc/main.h:31,
+                 from ../Core/Src/main.c:21:
+../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_adc.h:930:25: note: expected 'uint32_t * {aka long unsigned int *}' but argument is of type 'uint16_t (*)[2] {aka short unsigned int (*)[2]}'
+ HAL_StatusTypeDef       HAL_ADC_Start_DMA(ADC_HandleTypeDef* hadc, uint32_t* pData, uint32_t Length);
+                         ^~~~~~~~~~~~~~~~~
+arm-none-eabi-gcc -o "CAN_node_1.elf" @"objects.list"   -mcpu=cortex-m3 -T"D:\STM32_PROJECT\CAN_AutoSim\CAN_node_1\STM32F103C8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="CAN_node_1.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Finished building target: CAN_node_1.elf
+ 
+arm-none-eabi-objdump -h -S  CAN_node_1.elf  > "CAN_node_1.list"
+arm-none-eabi-objcopy  -O binary  CAN_node_1.elf  "CAN_node_1.bin"
+arm-none-eabi-size   CAN_node_1.elf 
+   text	   data	    bss	    dec	    hex	filename
+  27312	    124	   6028	  33464	   82b8	CAN_node_1.elf
+Finished building: default.size.stdout
+ 
+Finished building: CAN_node_1.bin
+ 
+Finished building: CAN_node_1.list
+ 
+
+11:02:57 Build Finished. 0 errors, 10 warnings. (took 1s.231ms)
+
