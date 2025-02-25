@@ -6,32 +6,39 @@
 		<item key="wholeword" value="false"/>
 		<item key="incremental" value="false"/>
 		<item key="isRegEx" value="false"/>
-		<item key="selection" value="read_sw_button"/>
+		<item key="selection" value="light_sw"/>
 		<list key="findhistory">
+			<item value="light_sw"/>
+			<item value="read_light_sw"/>
+			<item value="GPIOB, GPIO_PIN_2"/>
+			<item value="GPIOB"/>
+			<item value="dashboard_button"/>
+			<item value="q_light_controlHandle"/>
+			<item value="sw_button"/>
+			<item value="sw_light"/>
 			<item value="read_sw_button"/>
+			<item value="control_light"/>
 			<item value="ADC"/>
 			<item value="adc_value"/>
 			<item value="SystemClock_Config"/>
 			<item value="dma"/>
 			<item value="TaskTunerControl"/>
-			<item value="ADC_OFFSET_NONE"/>
-			<item value="ADC_S"/>
-			<item value="ADC_S "/>
-			<item value="status_adc"/>
-			<item value="prepare_buff_send"/>
-			<item value="q_throttle_controlHandle"/>
-			<item value="dashboard"/>
-			<item value="q_light_controlHandle"/>
-			<item value="emergency_buff_send"/>
 		</list>
 		<list key="replacehistory">
+			<item value="trim_button"/>
+			<item value="light_sw"/>
+			<item value="sw_light"/>
 		</list>
 	</section>
 	<section name="org.eclipse.ui.texteditor.FindReplaceDialog_dialogBounds">
-		<item key="DIALOG_X_ORIGIN" value="1041"/>
-		<item key="DIALOG_Y_ORIGIN" value="382"/>
+		<item key="DIALOG_X_ORIGIN" value="76"/>
+		<item key="DIALOG_Y_ORIGIN" value="759"/>
 		<item key="DIALOG_WIDTH" value="336"/>
-		<item key="DIALOG_HEIGHT" value="454"/>
+		<item key="DIALOG_HEIGHT" value="455"/>
 		<item key="DIALOG_FONT_NAME" value="1|Segoe UI|9.0|0|WINDOWS|1|-15|0|0|0|400|0|0|0|1|0|0|0|0|Segoe UI"/>
+	</section>
+	<section name="org.eclipse.ui.texteditor.GotoLineAction$GotoLineDialog_dialogBounds">
+		<item key="DIALOG_X_ORIGIN" value="892"/>
+		<item key="DIALOG_Y_ORIGIN" value="522"/>
 	</section>
 </section>

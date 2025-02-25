@@ -54,11 +54,13 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
+void control_light ();
 
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
 /* USER CODE BEGIN Private defines */
+typedef enum light_mode_t {stop_light, light_left, light_right, light_hazard};
 
 /* USER CODE END Private defines */
 

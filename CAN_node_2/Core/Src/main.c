@@ -52,6 +52,13 @@ osThreadId control_lightHandle;
 osMessageQId light_msgHandle;
 /* USER CODE BEGIN PV */
 
+uint8_t tmp_cnt = 0;
+uint8_t light_msg = 0;
+enum light_mode_t light_mode;
+
+CAN_RxHeaderTypeDef   rx_header;
+uint8_t               rx_data[8];
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -64,6 +71,120 @@ void StartDefaultTask(void const * argument);
 void StartTask02(void const * argument);
 
 /* USER CODE BEGIN PFP */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+	if (htim->Instance == htim2.Instance)
+	{
+		if (tmp_cnt > 49)
+		{
+			tmp_cnt = 0;
+			control_light_IT();
+		}
+		tmp_cnt++;
+	}
+}
+
+void control_light_IT ()
+{
+	switch (light_mode)
+	{
+	case stop_light:
+		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_15, GPIO_PIN_RESET);
+		break;
+
+	case light_hazard:
+		HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_14);
+		HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_15);
+		break;
+
+	case light_left:
+		HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_14);
+		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_15, GPIO_PIN_RESET);
+		break;
+
+	case light_right:
+		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14, GPIO_PIN_RESET);
+		HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_15);
+		break;
+
+	default:
+		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_15, GPIO_PIN_RESET);
+		light_mode = stop_light;
+		break;
+	}
+
+}
+
+void light_mgs_parse (uint8_t light_mode_msg)
+{
+	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_15, GPIO_PIN_RESET);
+	uint8_t tmp_mark = 0;
+	if ((light_mode_msg >> 0) & 0x01)
+	{
+		HAL_TIM_Base_Stop_IT(&htim2);
+		light_mode = stop_light;
+	}
+
+	if ((light_mode_msg >> 1) & 0x01)
+	{
+		HAL_TIM_Base_Start_IT(&htim2);
+		light_mode = light_hazard;
+	}
+	else if ((light_mode_msg >> 2) & 0x01)
+	{
+		HAL_TIM_Base_Start_IT(&htim2);
+		light_mode = light_left;
+	}
+	else if ((light_mode_msg >> 3) & 0x01)
+	{
+		HAL_TIM_Base_Start_IT(&htim2);
+		light_mode = light_right;
+	}
+
+	if ((light_mode_msg >> 4) & 0x01)
+	{
+		/* T.B.D */
+	}
+
+	if ((light_mode_msg >> 5) & 0x01)
+	{
+		/* T.B.D */
+	}
+
+	if ((light_mode_msg >> 6) & 0x01)
+	{
+		/* T.B.D */
+	}
+
+	if ((light_mode_msg >> 7) & 0x01)
+	{
+		/* T.B.D */
+	}
+}
+
+void clear_buff (uint8_t * buff_clear, size_t num)
+{
+	if (buff_clear == NULL) return;
+
+	memset(buff_clear, 0, num);
+}
+
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
+{
+	  if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &rx_header, rx_data) != HAL_OK)
+	  {
+	    Error_Handler();
+	  }
+	  if (rx_header.StdId == 0x210)
+	  {
+		  osMessagePut(light_msgHandle, rx_data[0], 0);
+	  }
+	  clear_buff(&rx_data, sizeof(uint8_t)*8);
+}
+
 
 /* USER CODE END PFP */
 
@@ -104,6 +225,8 @@ int main(void)
   MX_TIM2_Init();
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
+  HAL_CAN_Start(&hcan);
+  HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO0_MSG_PENDING);
 
   /* USER CODE END 2 */
 
@@ -265,8 +388,8 @@ static void MX_CAN_Init(void)
   hcan.Init.Prescaler = 9;
   hcan.Init.Mode = CAN_MODE_NORMAL;
   hcan.Init.SyncJumpWidth = CAN_SJW_1TQ;
-  hcan.Init.TimeSeg1 = CAN_BS1_3TQ;
-  hcan.Init.TimeSeg2 = CAN_BS2_4TQ;
+  hcan.Init.TimeSeg1 = CAN_BS1_4TQ;
+  hcan.Init.TimeSeg2 = CAN_BS2_3TQ;
   hcan.Init.TimeTriggeredMode = DISABLE;
   hcan.Init.AutoBusOff = DISABLE;
   hcan.Init.AutoWakeUp = DISABLE;
@@ -275,9 +398,23 @@ static void MX_CAN_Init(void)
   hcan.Init.TransmitFifoPriority = DISABLE;
   if (HAL_CAN_Init(&hcan) != HAL_OK)
   {
-    Error_Handler();
+	Error_Handler();
   }
   /* USER CODE BEGIN CAN_Init 2 */
+  CAN_FilterTypeDef canfilterconfig;
+
+  canfilterconfig.FilterActivation = ENABLE;
+  canfilterconfig.FilterBank = 0;
+  canfilterconfig.FilterFIFOAssignment = CAN_RX_FIFO0;
+  canfilterconfig.FilterMode = CAN_FILTERMODE_IDMASK;
+  canfilterconfig.FilterIdHigh = 0x200 << 5;
+  canfilterconfig.FilterIdLow = 0;
+  canfilterconfig.FilterMaskIdHigh = 0;
+  canfilterconfig.FilterMaskIdLow = 0;
+  canfilterconfig.FilterScale = CAN_FILTERSCALE_32BIT;
+  canfilterconfig.SlaveStartFilterBank = 10;
+
+  HAL_CAN_ConfigFilter(&hcan, &canfilterconfig);
 
   /* USER CODE END CAN_Init 2 */
 
@@ -382,8 +519,8 @@ void StartDefaultTask(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_2);
-	    osDelay(1000);
+	HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+	osDelay(1000);
   }
   /* USER CODE END 5 */
 }
@@ -399,9 +536,19 @@ void StartTask02(void const * argument)
 {
   /* USER CODE BEGIN StartTask02 */
   /* Infinite loop */
+	osEvent q_message;
   for(;;)
   {
-    osDelay(1);
+	/* get element from light queue to send light node control light */
+	q_message = osMessageGet(light_msgHandle, 0);
+
+	/* get a message in q_light_control if it is not empty */
+	if (q_message.status == osEventMessage)
+	{
+		light_msg = q_message.value.v;
+		light_mgs_parse(light_msg);
+	}
+	osDelay(10);
   }
   /* USER CODE END StartTask02 */
 }

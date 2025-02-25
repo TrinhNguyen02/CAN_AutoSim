@@ -55,10 +55,13 @@ TIM_HandleTypeDef htim2;
 osThreadId displayHandle;
 osThreadId send_messageHandle;
 osThreadId dashboardHandle;
-osMessageQId q_display_infoHandle;
 osMessageQId q_steering_controlHandle;
 osMessageQId q_throttle_controlHandle;
 osMessageQId q_light_controlHandle;
+osMessageQId q_trim_steeringHandle;
+osMessageQId q_disp_steeringHandle;
+osMessageQId q_disp_lightHandle;
+osMessageQId q_disp_throttleHandle;
 /* USER CODE BEGIN PV */
 
 CAN_TxHeaderTypeDef   tx_header;
@@ -73,7 +76,8 @@ kalman_t *kalman_1, *kalman_2;
 
 uint8_t 	status_motor = 0;		// 0 - stop, 1 - start, 2 - error
 
-uint8_t 	sw_button;
+uint8_t 	trim_button = 0;
+uint8_t 	light_sw = 0;
 
 /* USER CODE END PV */
 
@@ -187,7 +191,30 @@ void prepare_buff_send ()
 			{
 			   Error_Handler ();
 			}
-			HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_2);
+			clear_buff(&tx_data, sizeof(uint8_t)*8);
+
+		}
+	}
+
+	/* get element from light queue to send light node control light */
+	q_message = osMessageGet(q_light_controlHandle, 0);
+
+	/* get a message in q_light_control if it is not empty */
+	if (q_message.status == osEventMessage)
+	{
+		current_value = (uint16_t)q_message.value.v;
+		if (current_value != pre_light)
+		{
+			pre_light = current_value;
+			tx_header.StdId = 0x210;
+			tx_header.RTR = CAN_RTR_DATA;
+			tx_header.DLC = 1;
+
+			tx_data[0] = current_value;
+			if (HAL_CAN_AddTxMessage(&hcan, &tx_header, tx_data, &tx_mailbox) != HAL_OK)
+			{
+			   Error_Handler ();
+			}
 			clear_buff(&tx_data, sizeof(uint8_t)*8);
 
 		}
@@ -212,27 +239,26 @@ void emergency_buff_send ()
 	}
 }
 
-void dashboard ()
+void dashboard_button ()
 {
 	static uint8_t pre_sw_button = 0;
 	tx_header.IDE = CAN_ID_STD;
 
 	/* check if the value has changed, then send a message */
-	read_sw_button();
-	if (sw_button != pre_sw_button)
+	read_trim_button();
+	if (trim_button != pre_sw_button)
 	{
-		pre_sw_button = sw_button;
-		tx_header.StdId = 0x210;
+		pre_sw_button = trim_button;
+		tx_header.StdId = 0x111;
 		tx_header.RTR = CAN_RTR_DATA;
 		tx_header.DLC = 1;
 
-		if (HAL_CAN_AddTxMessage(&hcan, &tx_header, &sw_button, &tx_mailbox) != HAL_OK)
+		if (HAL_CAN_AddTxMessage(&hcan, &tx_header, &trim_button, &tx_mailbox) != HAL_OK)
 		{
 		   Error_Handler ();
 		}
 		clear_buff(&tx_data, sizeof(uint8_t)*8);
 	}
-
 }
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
@@ -241,69 +267,67 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 	  adc_value[1] = update_kalman(kalman_2, adc_value[1]);
 }
 
-void read_sw_button ()
+void read_light_sw ()
 {
-
-	/* ON/OFF main light */
-	if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15) == GPIO_PIN_RESET)
-	{
-		sw_button |= (1 << 0);
-	}
-	else
-	{
-		sw_button &= ~(1 << 0);
-	}
+	/* Set bit 0  */
+	light_sw |= (1 << 0);
 
 	/* ON/OFF hazard mode */
 	if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_14) == GPIO_PIN_RESET)
 	{
-		sw_button |= (1 << 1);
+		light_sw |= (1 << 1);
 	}
 	else
 	{
-		sw_button &= ~(1 << 1);
+		light_sw &= ~(1 << 1);
 	}
 
 	/* ON/OFF blinker left light */
 	if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13) == GPIO_PIN_RESET)
 	{
-		sw_button |= (1 << 2);
+		light_sw |= (1 << 2);
 	}
 	else
 	{
-		sw_button &= ~(1 << 2);
+		light_sw &= ~(1 << 2);
 	}
 
 	/* ON/OFF blinker right light */
 	if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_14) == GPIO_PIN_RESET)
 	{
-		sw_button |= (1 << 3);
+		light_sw |= (1 << 3);
 	}
 	else
 	{
-		sw_button &= ~(1 << 3);
+		light_sw &= ~(1 << 3);
 	}
+}
+
+void read_trim_button ()
+{
 
 	/* trimming down steering */
 	if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_12) == GPIO_PIN_RESET)
 	{
-		sw_button |= (1 << 4);
+		trim_button |= (1 << 0);
 	}
 	else
 	{
-		sw_button &= ~(1 << 4);
+		trim_button &= ~(1 << 0);
 	}
 
 	/* trimming up steering */
 	if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_13) == GPIO_PIN_RESET)
 	{
-		sw_button |= (1 << 5);
+		trim_button |= (1 << 1);
 	}
 	else
 	{
-		sw_button &= ~(1 << 5);
+		trim_button &= ~(1 << 1);
 	}
+
 }
+
 
 /* USER CODE END 0 */
 
@@ -320,7 +344,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-	HAL_Init();
+  HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -360,10 +384,6 @@ int main(void)
   /* USER CODE END RTOS_TIMERS */
 
   /* Create the queue(s) */
-  /* definition and creation of q_display_info */
-  osMessageQDef(q_display_info, 32, uint16_t);
-  q_display_infoHandle = osMessageCreate(osMessageQ(q_display_info), NULL);
-
   /* definition and creation of q_steering_control */
   osMessageQDef(q_steering_control, 32, uint16_t);
   q_steering_controlHandle = osMessageCreate(osMessageQ(q_steering_control), NULL);
@@ -373,8 +393,24 @@ int main(void)
   q_throttle_controlHandle = osMessageCreate(osMessageQ(q_throttle_control), NULL);
 
   /* definition and creation of q_light_control */
-  osMessageQDef(q_light_control, 32, uint16_t);
+  osMessageQDef(q_light_control, 32, uint8_t);
   q_light_controlHandle = osMessageCreate(osMessageQ(q_light_control), NULL);
+
+  /* definition and creation of q_trim_steering */
+  osMessageQDef(q_trim_steering, 32, uint8_t);
+  q_trim_steeringHandle = osMessageCreate(osMessageQ(q_trim_steering), NULL);
+
+  /* definition and creation of q_disp_steering */
+  osMessageQDef(q_disp_steering, 16, uint16_t);
+  q_disp_steeringHandle = osMessageCreate(osMessageQ(q_disp_steering), NULL);
+
+  /* definition and creation of q_disp_light */
+  osMessageQDef(q_disp_light, 16, uint8_t);
+  q_disp_lightHandle = osMessageCreate(osMessageQ(q_disp_light), NULL);
+
+  /* definition and creation of q_disp_throttle */
+  osMessageQDef(q_disp_throttle, 16, uint16_t);
+  q_disp_throttleHandle = osMessageCreate(osMessageQ(q_disp_throttle), NULL);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -721,7 +757,6 @@ void StartTask01(void const * argument)
   {
 	emergency_buff_send();
 	prepare_buff_send();
-	dashboard();
 	osDelay(1);
   }
   /* USER CODE END StartTask01 */
@@ -741,11 +776,19 @@ void StartTask02(void const * argument)
 				/* this task is get data from dashboard */
   /* Infinite loop */
 	HAL_ADC_Start_DMA(&hadc1, &adc_value, 2);
+	status_motor = 1;
   for(;;)
   {
-	status_motor = 1;
 	osMessagePut(q_throttle_controlHandle, adc_value[0], 0);
 	osMessagePut(q_steering_controlHandle, adc_value[1], 0);
+	osMessagePut(q_disp_steeringHandle, adc_value[1], 0);
+
+	read_light_sw();
+	osMessagePut(q_light_controlHandle, light_sw, 0);
+	osMessagePut(q_disp_lightHandle, light_sw, 0);
+
+	read_trim_button();
+	osMessagePut(q_trim_steeringHandle, trim_button, 0);
 	osDelay(1);
  }
   /* USER CODE END StartTask02 */
