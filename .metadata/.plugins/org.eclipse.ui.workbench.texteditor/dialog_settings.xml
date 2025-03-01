@@ -6,23 +6,23 @@
 		<item key="wholeword" value="false"/>
 		<item key="incremental" value="false"/>
 		<item key="isRegEx" value="false"/>
-		<item key="selection" value="light_sw"/>
+		<item key="selection" value="q_turn_signalHandle"/>
 		<list key="findhistory">
-			<item value="light_sw"/>
+			<item value="q_turn_signalHandle"/>
+			<item value="q_light_msgHandle"/>
+			<item value="disp_toggle_turn_signal"/>
+			<item value="disp_turn_signal_handle"/>
+			<item value="HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_2);"/>
+			<item value="HAL_GPIO_TogglePin"/>
+			<item value="stop_light"/>
+			<item value="&#x09;&#x09;&#x09;light_mode = stop_light;"/>
 			<item value="read_light_sw"/>
-			<item value="GPIOB, GPIO_PIN_2"/>
-			<item value="GPIOB"/>
-			<item value="dashboard_button"/>
-			<item value="q_light_controlHandle"/>
-			<item value="sw_button"/>
-			<item value="sw_light"/>
-			<item value="read_sw_button"/>
-			<item value="control_light"/>
-			<item value="ADC"/>
-			<item value="adc_value"/>
-			<item value="SystemClock_Config"/>
-			<item value="dma"/>
-			<item value="TaskTunerControl"/>
+			<item value="light_mgs_parse"/>
+			<item value="light_mode_t"/>
+			<item value="q_disp_lightHandle"/>
+			<item value="HAL_MAX_DELAY"/>
+			<item value="light_msg"/>
+			<item value="light_sw"/>
 		</list>
 		<list key="replacehistory">
 			<item value="trim_button"/>
@@ -31,8 +31,8 @@
 		</list>
 	</section>
 	<section name="org.eclipse.ui.texteditor.FindReplaceDialog_dialogBounds">
-		<item key="DIALOG_X_ORIGIN" value="76"/>
-		<item key="DIALOG_Y_ORIGIN" value="759"/>
+		<item key="DIALOG_X_ORIGIN" value="1296"/>
+		<item key="DIALOG_Y_ORIGIN" value="878"/>
 		<item key="DIALOG_WIDTH" value="336"/>
 		<item key="DIALOG_HEIGHT" value="455"/>
 		<item key="DIALOG_FONT_NAME" value="1|Segoe UI|9.0|0|WINDOWS|1|-15|0|0|0|400|0|0|0|1|0|0|0|0|Segoe UI"/>

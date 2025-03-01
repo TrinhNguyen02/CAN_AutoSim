@@ -1,0 +1,119 @@
+/*
+ * ssd1306_udf.c
+ *
+ *  Created on: Feb 26, 2025
+ *      Author: tantr
+ */
+#include <string.h>
+#include "main.h"
+#include <stdio.h>
+#include "ssd1306.h"
+#include "ssd1306_udf.h"
+#include "ssd1306_graphic.h"
+
+void disp_msg_7x10(char* msg, uint8_t x, uint8_t y){
+	ssd1306_SetCursor(x, y);
+	ssd1306_WriteString(msg, Font_7x10, White);
+	ssd1306_UpdateScreen();
+}
+
+void disp_msg_11x18(char* msg, uint8_t x, uint8_t y){
+	ssd1306_SetCursor(x, y);
+	ssd1306_WriteString(msg, Font_11x18, White);
+	ssd1306_UpdateScreen();
+}
+
+void disp_msg_uint(uint16_t number, uint8_t x, uint8_t y)
+{
+	char c_number[4];
+	sprintf(c_number,"%3d",number);
+	disp_msg_11x18(c_number, x, y);
+}
+
+void disp_draw_dashboard()
+{
+    ssd1306_Init();
+    ssd1306_Fill(Black);
+    ssd1306_DrawBitmap(0,0,dashboard_128x64,128,64,White);
+
+    while(1)
+    {
+    	for (int i = 0; i < 150; i++)
+    	{
+        	if (i % 5 == 0)
+        	{
+        		if ((i/5) % 2 == 0)
+        		{
+    				ssd1306_DrawBitmap(0,0,left_blinker,128,64,White);
+    				ssd1306_DrawBitmap(0,0,right_blinker ,128,64,White);
+					ssd1306_DrawBitmap(0,0,hazard_blinker ,128,64,White);
+        		}
+        		else
+        		{
+            		ssd1306_DrawBitmap(0,0,left_blinker,128,64,Black);
+            		ssd1306_DrawBitmap(0,0,right_blinker ,128,64,Black);
+					ssd1306_DrawBitmap(0,0,hazard_blinker ,128,64,Black);
+        		}
+				ssd1306_UpdateScreen();
+
+        	}
+    	}
+    	for (int i = 150; i > 0; i--)
+    	{
+        	if (i % 5 == 0)
+        	{
+        		if ((i/5) % 2 == 0)
+        		{
+    				ssd1306_DrawBitmap(0,0,left_blinker,128,64,White);
+    				ssd1306_DrawBitmap(0,0,right_blinker ,128,64,White);
+					ssd1306_DrawBitmap(0,0,hazard_blinker ,128,64,White);
+        		}
+        		else
+        		{
+            		ssd1306_DrawBitmap(0,0,left_blinker,128,64,Black);
+            		ssd1306_DrawBitmap(0,0,right_blinker ,128,64,Black);
+					ssd1306_DrawBitmap(0,0,hazard_blinker ,128,64,Black);
+        		}
+				ssd1306_UpdateScreen();
+
+        	}
+    	}
+    }
+}
+
+void disp_turn_signal_handle (enum light_mode_t mode)
+{
+	switch (mode)
+	{
+	case light_hazard:
+
+		break;
+
+	case light_left:
+		disp_toggle_turn_signal(left_blinker);
+		break;
+
+	case light_right:
+		disp_toggle_turn_signal(right_blinker);
+		break;
+
+	default:
+
+		break;
+	}
+}
+
+void disp_toggle_turn_signal (unsigned char * mode_blinker)
+{
+	static uint8_t tmp_toggle = 0;
+	if (tmp_toggle)
+	{
+		ssd1306_DrawBitmap(0, 0,*mode_blinker ,128,64,White);
+		tmp_toggle = 0;
+	}
+	else
+	{
+		ssd1306_DrawBitmap(0, 0,*mode_blinker ,128,64,Black);
+		tmp_toggle = 1;
+	}
+}

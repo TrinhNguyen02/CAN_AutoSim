@@ -49,16 +49,19 @@ TIM_HandleTypeDef htim2;
 
 osThreadId recieve_msgHandle;
 osThreadId control_lightHandle;
-osMessageQId light_msgHandle;
+osMessageQId q_light_msgHandle;
 /* USER CODE BEGIN PV */
 
 uint8_t tmp_cnt = 0;
 uint8_t light_msg = 0;
 enum light_mode_t light_mode;
 
+CAN_TxHeaderTypeDef   tx_header;
+uint8_t               tx_data[8];
+uint32_t              tx_mailbox;
+
 CAN_RxHeaderTypeDef   rx_header;
 uint8_t               rx_data[8];
-
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -79,6 +82,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		{
 			tmp_cnt = 0;
 			control_light_IT();
+
+			tx_header.StdId = 0x211;
+			tx_header.RTR = CAN_RTR_DATA;
+			tx_header.DLC = 1;
+			if (HAL_CAN_AddTxMessage(&hcan, &tx_header, &light_msg, &tx_mailbox) != HAL_OK)
+			{
+			   Error_Handler ();
+			}
 		}
 		tmp_cnt++;
 	}
@@ -124,24 +135,36 @@ void light_mgs_parse (uint8_t light_mode_msg)
 	uint8_t tmp_mark = 0;
 	if ((light_mode_msg >> 0) & 0x01)
 	{
-		HAL_TIM_Base_Stop_IT(&htim2);
 		light_mode = stop_light;
+		HAL_TIM_Base_Stop_IT(&htim2);
 	}
 
 	if ((light_mode_msg >> 1) & 0x01)
 	{
-		HAL_TIM_Base_Start_IT(&htim2);
 		light_mode = light_hazard;
+		HAL_TIM_Base_Start_IT(&htim2);
 	}
 	else if ((light_mode_msg >> 2) & 0x01)
 	{
-		HAL_TIM_Base_Start_IT(&htim2);
 		light_mode = light_left;
+		HAL_TIM_Base_Start_IT(&htim2);
 	}
 	else if ((light_mode_msg >> 3) & 0x01)
 	{
-		HAL_TIM_Base_Start_IT(&htim2);
 		light_mode = light_right;
+		HAL_TIM_Base_Start_IT(&htim2);
+	}
+	else
+	{
+		light_mode = stop_light;
+		HAL_TIM_Base_Stop_IT(&htim2);
+		tx_header.StdId = 0x211;
+		tx_header.RTR = CAN_RTR_DATA;
+		tx_header.DLC = 1;
+		if (HAL_CAN_AddTxMessage(&hcan, &tx_header, &light_mode_msg, &tx_mailbox) != HAL_OK)
+		{
+		   Error_Handler ();
+		}
 	}
 
 	if ((light_mode_msg >> 4) & 0x01)
@@ -180,7 +203,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 	  }
 	  if (rx_header.StdId == 0x210)
 	  {
-		  osMessagePut(light_msgHandle, rx_data[0], 0);
+		  osMessagePut(q_light_msgHandle, rx_data[0], 0);
 	  }
 	  clear_buff(&rx_data, sizeof(uint8_t)*8);
 }
@@ -243,9 +266,9 @@ int main(void)
   /* USER CODE END RTOS_TIMERS */
 
   /* Create the queue(s) */
-  /* definition and creation of light_msg */
-  osMessageQDef(light_msg, 32, uint16_t);
-  light_msgHandle = osMessageCreate(osMessageQ(light_msg), NULL);
+  /* definition and creation of q_light_msg */
+  osMessageQDef(q_light_msg, 32, uint16_t);
+  q_light_msgHandle = osMessageCreate(osMessageQ(q_light_msg), NULL);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -388,8 +411,8 @@ static void MX_CAN_Init(void)
   hcan.Init.Prescaler = 9;
   hcan.Init.Mode = CAN_MODE_NORMAL;
   hcan.Init.SyncJumpWidth = CAN_SJW_1TQ;
-  hcan.Init.TimeSeg1 = CAN_BS1_4TQ;
-  hcan.Init.TimeSeg2 = CAN_BS2_3TQ;
+  hcan.Init.TimeSeg1 = CAN_BS1_3TQ;
+  hcan.Init.TimeSeg2 = CAN_BS2_4TQ;
   hcan.Init.TimeTriggeredMode = DISABLE;
   hcan.Init.AutoBusOff = DISABLE;
   hcan.Init.AutoWakeUp = DISABLE;
@@ -398,7 +421,7 @@ static void MX_CAN_Init(void)
   hcan.Init.TransmitFifoPriority = DISABLE;
   if (HAL_CAN_Init(&hcan) != HAL_OK)
   {
-	Error_Handler();
+    Error_Handler();
   }
   /* USER CODE BEGIN CAN_Init 2 */
   CAN_FilterTypeDef canfilterconfig;
@@ -540,7 +563,7 @@ void StartTask02(void const * argument)
   for(;;)
   {
 	/* get element from light queue to send light node control light */
-	q_message = osMessageGet(light_msgHandle, 0);
+	q_message = osMessageGet(q_light_msgHandle, 0);
 
 	/* get a message in q_light_control if it is not empty */
 	if (q_message.status == osEventMessage)

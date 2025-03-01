@@ -1,53 +1,10 @@
-22:08:47 **** Incremental Build of configuration Debug for project CAN_node_2 ****
+09:58:45 **** Incremental Build of configuration Debug for project CAN_node_2 ****
 make -j8 all 
-arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m3 -std=gnu11 -g3 -DUSE_HAL_DRIVER -DSTM32F103xB -DDEBUG -c -I../Core/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../Drivers/CMSIS/Include -I../Middlewares/Third_Party/FreeRTOS/Source/include -I../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS -I../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Core/Src/main.o"
-In file included from ../Core/Src/main.c:21:0:
-../Core/Inc/main.h:63:65: warning: useless storage class specifier in empty declaration
- typedef enum light_mode_t {stop_light, light_left, light_right, light_hazard};
-                                                                 ^~~~~~~~~~~~
-../Core/Src/main.c: In function 'HAL_TIM_PeriodElapsedCallback':
-../Core/Src/main.c:81:4: warning: implicit declaration of function 'control_light_IT'; did you mean 'control_light'? [-Wimplicit-function-declaration]
-    control_light_IT();
-    ^~~~~~~~~~~~~~~~
-    control_light
-../Core/Src/main.c: At top level:
-../Core/Src/main.c:87:6: warning: conflicting types for 'control_light_IT'
- void control_light_IT ()
-      ^~~~~~~~~~~~~~~~
-../Core/Src/main.c:81:4: note: previous implicit declaration of 'control_light_IT' was here
-    control_light_IT();
-    ^~~~~~~~~~~~~~~~
-../Core/Src/main.c: In function 'light_mgs_parse':
-../Core/Src/main.c:124:10: warning: unused variable 'tmp_mark' [-Wunused-variable]
-  uint8_t tmp_mark = 0;
-          ^~~~~~~~
-../Core/Src/main.c: In function 'clear_buff':
-../Core/Src/main.c:172:2: warning: implicit declaration of function 'memset' [-Wimplicit-function-declaration]
-  memset(buff_clear, 0, num);
-  ^~~~~~
-../Core/Src/main.c:172:2: warning: incompatible implicit declaration of built-in function 'memset'
-../Core/Src/main.c:172:2: note: include '<string.h>' or provide a declaration of 'memset'
-../Core/Src/main.c: In function 'HAL_CAN_RxFifo0MsgPendingCallback':
-../Core/Src/main.c:185:15: warning: passing argument 1 of 'clear_buff' from incompatible pointer type [-Wincompatible-pointer-types]
-    clear_buff(&rx_data, sizeof(uint8_t)*8);
-               ^
-../Core/Src/main.c:168:6: note: expected 'uint8_t * {aka unsigned char *}' but argument is of type 'uint8_t (*)[8] {aka unsigned char (*)[8]}'
- void clear_buff (uint8_t * buff_clear, size_t num)
-      ^~~~~~~~~~
-arm-none-eabi-gcc -o "CAN_node_2.elf" @"objects.list"   -mcpu=cortex-m3 -T"D:\STM32_PROJECT\CAN_AutoSim\CAN_node_2\STM32F103C8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="CAN_node_2.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
-Finished building target: CAN_node_2.elf
- 
-arm-none-eabi-objdump -h -S  CAN_node_2.elf  > "CAN_node_2.list"
-arm-none-eabi-objcopy  -O binary  CAN_node_2.elf  "CAN_node_2.bin"
 arm-none-eabi-size   CAN_node_2.elf 
    text	   data	    bss	    dec	    hex	filename
-  21872	     24	   5784	  27680	   6c20	CAN_node_2.elf
+  22432	     24	   5824	  28280	   6e78	CAN_node_2.elf
 Finished building: default.size.stdout
  
-Finished building: CAN_node_2.bin
- 
-Finished building: CAN_node_2.list
- 
 
-22:08:48 Build Finished. 0 errors, 7 warnings. (took 1s.162ms)
+09:58:45 Build Finished. 0 errors, 0 warnings. (took 440ms)
 
