@@ -1,8 +1,0 @@
-ssd1306_udf.c:29:6:disp_msg_7x10	16	static
-ssd1306_udf.c:35:6:disp_msg_11x18	16	static
-ssd1306_udf.c:41:6:disp_msg_uint	24	static
-ssd1306_udf.c:48:6:disp_draw_dashboard	40	static
-ssd1306_udf.c:63:6:disp_turn_signal_handle	24	static
-ssd1306_udf.c:89:6:disp_toggle_turn_signal	24	static
-ssd1306_udf.c:95:6:disp_off_turn_signal	16	static
-ssd1306_udf.c:103:6:disp_needle_speed	56	static
