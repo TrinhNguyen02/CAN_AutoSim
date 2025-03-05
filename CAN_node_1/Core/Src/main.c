@@ -74,7 +74,8 @@ CAN_RxHeaderTypeDef   rx_header;
 uint8_t               rx_data[8];
 
 uint16_t	adc_value[2];
-uint16_t 	tmp_adc_value;
+uint16_t 	tmp_adc_value_1;
+uint16_t 	tmp_adc_value_2;
 kalman_t *kalman_1, *kalman_2;
 
 uint8_t 	status_motor = 0;		// 0 - stop, 1 - start, 2 - error
@@ -130,7 +131,7 @@ void prepare_buff_send ()
 	{
 		/* check if the value has changed, then send a message */
 		current_value = (uint16_t)q_message.value.v;
-		tmp_adc_value = (current_value*299/4028);
+		tmp_adc_value_1 = (current_value*299/4028);
 		if (abs(current_value - pre_throttle) > 10)
 		{
 			pre_throttle = current_value;
@@ -158,6 +159,7 @@ void prepare_buff_send ()
 	{
 		/* check if the value has changed, then send a message */
 		current_value = (uint16_t)q_message.value.v;
+		tmp_adc_value_2 = (current_value*299/4028);
 		if (abs(current_value - pre_steering) > 10)
 		{
 			pre_steering = current_value;
@@ -314,8 +316,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	static uint8_t 	tmp_cnt = 0;
 	if (htim->Instance == htim2.Instance)
 	{
-		if (tmp_cnt > 49)
+		if (tmp_cnt == 1)
 		{
+			HAL_ADC_Start_DMA(&hadc1, &adc_value, 2);
+		}
+		else if (tmp_cnt > 1)
+		{
+			HAL_ADC_Stop_DMA(&hadc1);
 			tmp_cnt = 0;
 		}
 		tmp_cnt++;
@@ -393,6 +400,7 @@ int main(void)
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   HAL_CAN_Start(&hcan);
+  HAL_TIM_Base_Start_IT(&htim2);
   HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO0_MSG_PENDING);
   kalman_1 = create_kalman(50, 50, 0.01);
   kalman_2 = create_kalman(50, 50, 0.01);
@@ -679,7 +687,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 72-1;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 10000-1;
+  htim2.Init.Period = 5000-1;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -777,8 +785,8 @@ void StartDefaultTask(void const * argument)
 	disp_draw_dashboard();
 	for(;;)
   {
-	disp_msg_uint(tmp_adc_value, 95, 40);
-	disp_needle_speed(tmp_adc_value);
+	disp_msg_uint(tmp_adc_value_1, 95, 40);
+	disp_needle_speed(tmp_adc_value_1, tmp_adc_value_2);
   }
   /* USER CODE END 5 */
 }
@@ -817,7 +825,6 @@ void StartTask02(void const * argument)
   /* USER CODE BEGIN StartTask02 */
 				/* this task is get data from dashboard */
   /* Infinite loop */
-	HAL_ADC_Start_DMA(&hadc1, &adc_value, 2);
 	status_motor = 1;
   for(;;)
   {
