@@ -6,34 +6,46 @@
 		<item key="wholeword" value="false"/>
 		<item key="incremental" value="false"/>
 		<item key="isRegEx" value="false"/>
-		<item key="selection" value="q_turn_signalHandle"/>
+		<item key="selection" value="curr_cnt"/>
 		<list key="findhistory">
-			<item value="q_turn_signalHandle"/>
-			<item value="q_light_msgHandle"/>
-			<item value="disp_toggle_turn_signal"/>
+			<item value="curr_cnt"/>
+			<item value="status_motor"/>
+			<item value="speed_control"/>
 			<item value="disp_turn_signal_handle"/>
-			<item value="HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_2);"/>
-			<item value="HAL_GPIO_TogglePin"/>
-			<item value="stop_light"/>
-			<item value="&#x09;&#x09;&#x09;light_mode = stop_light;"/>
-			<item value="read_light_sw"/>
-			<item value="light_mgs_parse"/>
-			<item value="light_mode_t"/>
-			<item value="q_disp_lightHandle"/>
-			<item value="HAL_MAX_DELAY"/>
-			<item value="light_msg"/>
-			<item value="light_sw"/>
+			<item value="check_status_motor"/>
+			<item value="current_value"/>
+			<item value="disp_toggle_turn_signal"/>
+			<item value="error_blinker"/>
+			<item value="tmp_disp"/>
+			<item value="disp"/>
+			<item value="throttle_control"/>
+			<item value="pre_throttle"/>
+			<item value="q_throttle_controlHandle"/>
+			<item value="pre_tick_cnt"/>
+			<item value="inHandlerMode"/>
 		</list>
 		<list key="replacehistory">
+			<item value="speed_rpm_fb"/>
+			<item value="speed_ppr_fb"/>
+			<item value="actl_rpm"/>
+			<item value="pre_rpm"/>
+			<item value="rpm"/>
+			<item value="needle_speed_small"/>
+			<item value="needle_speed_big"/>
+			<item value="needle_speed_center_y"/>
+			<item value="needle_speed_center_x"/>
+			<item value="needle_speed_end_y"/>
+			<item value="needle_speed_end_x"/>
+			<item value="needle_speed_start_y"/>
+			<item value="needle_speed_start_x"/>
 			<item value="trim_button"/>
 			<item value="light_sw"/>
-			<item value="sw_light"/>
 		</list>
 	</section>
 	<section name="org.eclipse.ui.texteditor.FindReplaceDialog_dialogBounds">
 		<item key="DIALOG_X_ORIGIN" value="1296"/>
 		<item key="DIALOG_Y_ORIGIN" value="878"/>
-		<item key="DIALOG_WIDTH" value="336"/>
+		<item key="DIALOG_WIDTH" value="335"/>
 		<item key="DIALOG_HEIGHT" value="455"/>
 		<item key="DIALOG_FONT_NAME" value="1|Segoe UI|9.0|0|WINDOWS|1|-15|0|0|0|400|0|0|0|1|0|0|0|0|Segoe UI"/>
 	</section>

@@ -1,0 +1,15 @@
+/*
+ * motor.c
+ *
+ *  Created on: Mar 6, 2025
+ *      Author: tantr
+ */
+#include "main.h"
+#include "motor.h"
+#include "stm32f1xx_hal.h"
+
+extern motor_t main_motor;
+extern uint16_t speed_pulse;
+
+
+

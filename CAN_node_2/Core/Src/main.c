@@ -52,7 +52,6 @@ osThreadId control_lightHandle;
 osMessageQId q_light_msgHandle;
 /* USER CODE BEGIN PV */
 
-uint8_t tmp_cnt = 0;
 uint8_t light_msg = 0;
 enum light_mode_t light_mode;
 
@@ -76,11 +75,13 @@ void StartTask02(void const * argument);
 /* USER CODE BEGIN PFP */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
+	static uint8_t period_signal_cnt = 0;
+
 	if (htim->Instance == htim2.Instance)
 	{
-		if (tmp_cnt > 49)
+		if (period_signal_cnt > 49)
 		{
-			tmp_cnt = 0;
+			period_signal_cnt = 0;
 			control_light_IT();
 
 			tx_header.StdId = 0x211;
@@ -91,7 +92,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			   Error_Handler ();
 			}
 		}
-		tmp_cnt++;
+		period_signal_cnt++;
 	}
 }
 
@@ -132,7 +133,6 @@ void light_mgs_parse (uint8_t light_mode_msg)
 {
 	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
-	uint8_t tmp_mark = 0;
 	if ((light_mode_msg >> 0) & 0x01)
 	{
 		light_mode = stop_light;
@@ -158,6 +158,7 @@ void light_mgs_parse (uint8_t light_mode_msg)
 	{
 		light_mode = stop_light;
 		HAL_TIM_Base_Stop_IT(&htim2);
+
 		tx_header.StdId = 0x211;
 		tx_header.RTR = CAN_RTR_DATA;
 		tx_header.DLC = 1;

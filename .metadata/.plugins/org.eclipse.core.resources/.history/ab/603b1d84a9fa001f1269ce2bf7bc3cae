@@ -1,0 +1,21 @@
+/*
+ * motor.h
+ *
+ *  Created on: Mar 6, 2025
+ *      Author: tantr
+ */
+
+#ifndef INC_MOTOR_H_
+#define INC_MOTOR_H_
+
+
+typedef struct
+{
+	int actl_speed;
+	uint32_t curr_cnt;
+	uint32_t pre_cnt;
+} motor_t;
+
+int error;
+
+#endif /* INC_MOTOR_H_ */
