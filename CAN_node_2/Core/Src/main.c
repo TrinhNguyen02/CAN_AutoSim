@@ -52,7 +52,6 @@ osThreadId control_lightHandle;
 osMessageQId q_light_msgHandle;
 /* USER CODE BEGIN PV */
 
-uint8_t tmp_cnt = 0;
 uint8_t light_msg = 0;
 enum light_mode_t light_mode;
 
@@ -76,11 +75,13 @@ void StartTask02(void const * argument);
 /* USER CODE BEGIN PFP */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
+	static uint8_t period_signal_cnt = 0;
+
 	if (htim->Instance == htim2.Instance)
 	{
-		if (tmp_cnt > 49)
+		if (period_signal_cnt > 49)
 		{
-			tmp_cnt = 0;
+			period_signal_cnt = 0;
 			control_light_IT();
 
 			tx_header.StdId = 0x211;
@@ -91,7 +92,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			   Error_Handler ();
 			}
 		}
-		tmp_cnt++;
+		period_signal_cnt++;
 	}
 }
 
@@ -100,28 +101,28 @@ void control_light_IT ()
 	switch (light_mode)
 	{
 	case stop_light:
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_15, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
 		break;
 
 	case light_hazard:
-		HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_14);
-		HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_15);
+		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_12);
+		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_13);
 		break;
 
 	case light_left:
-		HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_14);
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_15, GPIO_PIN_RESET);
+		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_12);
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
 		break;
 
 	case light_right:
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14, GPIO_PIN_RESET);
-		HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_15);
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_13);
 		break;
 
 	default:
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_15, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
 		light_mode = stop_light;
 		break;
 	}
@@ -130,9 +131,8 @@ void control_light_IT ()
 
 void light_mgs_parse (uint8_t light_mode_msg)
 {
-	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14, GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_15, GPIO_PIN_RESET);
-	uint8_t tmp_mark = 0;
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
 	if ((light_mode_msg >> 0) & 0x01)
 	{
 		light_mode = stop_light;
@@ -158,6 +158,7 @@ void light_mgs_parse (uint8_t light_mode_msg)
 	{
 		light_mode = stop_light;
 		HAL_TIM_Base_Stop_IT(&htim2);
+
 		tx_header.StdId = 0x211;
 		tx_header.RTR = CAN_RTR_DATA;
 		tx_header.DLC = 1;
@@ -507,7 +508,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2|GPIO_PIN_12|GPIO_PIN_13, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : PC14 PC15 */
   GPIO_InitStruct.Pin = GPIO_PIN_14|GPIO_PIN_15;
@@ -516,8 +517,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PB2 */
-  GPIO_InitStruct.Pin = GPIO_PIN_2;
+  /*Configure GPIO pins : PB2 PB12 PB13 */
+  GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_12|GPIO_PIN_13;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;

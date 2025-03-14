@@ -64,6 +64,7 @@ osMessageQId q_trim_steeringHandle;
 osMessageQId q_disp_steeringHandle;
 osMessageQId q_disp_turn_signalHandle;
 osMessageQId q_disp_throttleHandle;
+osMessageQId q_throttle_fbHandle;
 /* USER CODE BEGIN PV */
 
 CAN_TxHeaderTypeDef   tx_header;
@@ -74,8 +75,9 @@ CAN_RxHeaderTypeDef   rx_header;
 uint8_t               rx_data[8];
 
 uint16_t	adc_value[2];
-uint16_t 	tmp_adc_value;
-kalman_t *kalman_1, *kalman_2;
+uint16_t 	speed_ppr_fb;
+uint16_t 	speed_rpm_fb;
+kalman_t 	*kalman_1, *kalman_2;
 
 uint8_t 	status_motor = 0;		// 0 - stop, 1 - start, 2 - error
 
@@ -110,6 +112,44 @@ void clear_buff (uint8_t * buff_clear, size_t num)
 	memset(buff_clear, 0, num);
 }
 
+uint8_t check_status_motor (uint16_t throttle_control, uint16_t speed_fb, uint32_t timeout_ms)
+{
+	static uint32_t curr_tick_cnt = 0;
+	static uint32_t pre_tick_cnt = 0;
+	static uint16_t pre_throttle_control;
+	static uint8_t 	ret = 1;
+
+	throttle_control = throttle_control*144/4096;
+
+	curr_tick_cnt = osKernelSysTick();
+
+	if (curr_tick_cnt - pre_tick_cnt > timeout_ms)
+	{
+		if ((pre_throttle_control - speed_fb) > 30)
+		{
+			ret = 2;
+		}
+		pre_throttle_control = throttle_control;
+		pre_tick_cnt = curr_tick_cnt;
+	}
+	return ret;
+}
+
+void disp_status_motor (uint8_t _status_motor)
+{
+	if (_status_motor == 2)
+	{
+	static uint32_t curr_tick_cnt = 0;
+	static uint32_t pre_tick_cnt = 0;
+
+	curr_tick_cnt = osKernelSysTick();
+		if (curr_tick_cnt - pre_tick_cnt > 1000)
+		{
+			disp_toggle_turn_signal(error_blinker);
+		}
+	}
+}
+
 void prepare_buff_send ()
 {
 	static uint16_t pre_throttle = 0;
@@ -124,13 +164,13 @@ void prepare_buff_send ()
 
 	/* get element from throttle queue to send motor node control speed motor */
 	q_message = osMessageGet(q_throttle_controlHandle, 0);
+	status_motor = check_status_motor((uint16_t)q_message.value.v, speed_ppr_fb, 100);
 
 	/* get a message in q_throttle_control if it is not empty */
 	if (q_message.status == osEventMessage)
 	{
 		/* check if the value has changed, then send a message */
 		current_value = (uint16_t)q_message.value.v;
-		tmp_adc_value = (current_value*299/4028);
 		if (abs(current_value - pre_throttle) > 10)
 		{
 			pre_throttle = current_value;
@@ -286,7 +326,6 @@ void read_light_sw ()
 
 void read_trim_button ()
 {
-
 	/* trimming down steering */
 	if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_12) == GPIO_PIN_RESET)
 	{
@@ -306,19 +345,23 @@ void read_trim_button ()
 	{
 		trim_button &= ~(1 << 1);
 	}
-
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-	static uint8_t 	tmp_cnt = 0;
+	static uint8_t 	period_read_ADC_cnt = 0;
 	if (htim->Instance == htim2.Instance)
 	{
-		if (tmp_cnt > 49)
+		if (period_read_ADC_cnt == 1)
 		{
-			tmp_cnt = 0;
+			HAL_ADC_Start_DMA(&hadc1, &adc_value, 2);
 		}
-		tmp_cnt++;
+		else if (period_read_ADC_cnt > 1)
+		{
+			HAL_ADC_Stop_DMA(&hadc1);
+			period_read_ADC_cnt = 0;
+		}
+		period_read_ADC_cnt++;
 	}
 }
 
@@ -330,12 +373,18 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 	  }
 	  if (rx_header.StdId == 0x211)
 	  {
-		  tmp_disp(rx_data[0]);
+		  displ_turn_signal(rx_data[0]);
+		  clear_buff(&rx_data, sizeof(uint8_t)*8);
 	  }
-	  clear_buff(&rx_data, sizeof(uint8_t)*8);
+	  if (rx_header.StdId == 0x101)
+	  {
+		  speed_ppr_fb = (uint16_t)(rx_data[0] | (rx_data[1] << 8));
+		  speed_rpm_fb = speed_ppr_fb * 1.4;
+		  clear_buff(&rx_data, sizeof(uint8_t)*8);
+	  }
 }
 
-void tmp_disp (uint8_t feedback_turn_signal)
+void displ_turn_signal (uint8_t feedback_turn_signal)
 {
 	if ((feedback_turn_signal >> 1) & 0x01)
 	{
@@ -356,6 +405,23 @@ void tmp_disp (uint8_t feedback_turn_signal)
 	ssd1306_UpdateScreen();
 }
 
+void blinker_led ()
+{
+	static uint32_t curr_tick_cnt = 0;
+	static uint32_t pre_tick_cnt = 0;
+
+	curr_tick_cnt = osKernelSysTick();
+	if (curr_tick_cnt - pre_tick_cnt > 1000)
+	{
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_SET);
+	}
+	if (curr_tick_cnt - pre_tick_cnt > 1030)
+	{
+		pre_tick_cnt = curr_tick_cnt;
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET);
+	}
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -371,7 +437,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-	HAL_Init();
+    HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -393,6 +459,7 @@ int main(void)
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   HAL_CAN_Start(&hcan);
+  HAL_TIM_Base_Start_IT(&htim2);
   HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO0_MSG_PENDING);
   kalman_1 = create_kalman(50, 50, 0.01);
   kalman_2 = create_kalman(50, 50, 0.01);
@@ -420,7 +487,7 @@ int main(void)
   q_throttle_controlHandle = osMessageCreate(osMessageQ(q_throttle_control), NULL);
 
   /* definition and creation of q_turn_signal */
-  osMessageQDef(q_turn_signal, 32, uint8_t);
+  osMessageQDef(q_turn_signal, 16, uint8_t);
   q_turn_signalHandle = osMessageCreate(osMessageQ(q_turn_signal), NULL);
 
   /* definition and creation of q_trim_steering */
@@ -439,13 +506,17 @@ int main(void)
   osMessageQDef(q_disp_throttle, 16, uint16_t);
   q_disp_throttleHandle = osMessageCreate(osMessageQ(q_disp_throttle), NULL);
 
+  /* definition and creation of q_throttle_fb */
+  osMessageQDef(q_throttle_fb, 32, uint16_t);
+  q_throttle_fbHandle = osMessageCreate(osMessageQ(q_throttle_fb), NULL);
+
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
   /* definition and creation of display */
-  osThreadDef(display, StartDefaultTask, osPriorityBelowNormal, 0, 128);
+  osThreadDef(display, StartDefaultTask, osPriorityNormal, 0, 128);
   displayHandle = osThreadCreate(osThread(display), NULL);
 
   /* definition and creation of send_message */
@@ -776,10 +847,12 @@ void StartDefaultTask(void const * argument)
   /* Infinite loop */
 	disp_draw_dashboard();
 	for(;;)
-  {
-	disp_msg_uint(tmp_adc_value, 95, 40);
-	disp_needle_speed(tmp_adc_value);
-  }
+	{
+		blinker_led();
+		disp_status_motor(status_motor);
+		disp_msg_uint(speed_ppr_fb, 95, 40);
+		disp_needle_speed(speed_ppr_fb, speed_rpm_fb);
+	}
   /* USER CODE END 5 */
 }
 
@@ -795,12 +868,12 @@ void StartTask01(void const * argument)
   /* USER CODE BEGIN StartTask01 */
 				/* this task is prepares message and send message */
   /* Infinite loop */
-  for(;;)
-  {
-	emergency_buff_send();
-	prepare_buff_send();
-	osDelay(1);
-  }
+	for(;;)
+	{
+		emergency_buff_send();
+		prepare_buff_send();
+		osDelay(1);
+	}
   /* USER CODE END StartTask01 */
 }
 
@@ -817,22 +890,21 @@ void StartTask02(void const * argument)
   /* USER CODE BEGIN StartTask02 */
 				/* this task is get data from dashboard */
   /* Infinite loop */
-	HAL_ADC_Start_DMA(&hadc1, &adc_value, 2);
 	status_motor = 1;
-  for(;;)
-  {
-	osMessagePut(q_throttle_controlHandle, adc_value[0], 0);
-	osMessagePut(q_steering_controlHandle, adc_value[1], 0);
-	osMessagePut(q_disp_throttleHandle, adc_value[1], 0);
+	for(;;)
+	{
+		osMessagePut(q_throttle_controlHandle, adc_value[0], 0);
+		osMessagePut(q_steering_controlHandle, adc_value[1], 0);
+		osMessagePut(q_disp_throttleHandle, adc_value[1], 0);
 
-	read_light_sw();
-	osMessagePut(q_turn_signalHandle, light_sw, 0);
-	osMessagePut(q_disp_turn_signalHandle, light_sw, 0);
+		read_light_sw();
+		osMessagePut(q_turn_signalHandle, light_sw, 0);
+		osMessagePut(q_disp_turn_signalHandle, light_sw, 0);
 
-	read_trim_button();
-	osMessagePut(q_trim_steeringHandle, trim_button, 0);
-	osDelay(1);
- }
+		read_trim_button();
+		osMessagePut(q_trim_steeringHandle, trim_button, 0);
+		osDelay(1);
+	}
   /* USER CODE END StartTask02 */
 }
 
