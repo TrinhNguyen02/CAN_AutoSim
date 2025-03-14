@@ -1,4 +1,0 @@
-19:54:36 **** Clean-only build of configuration Debug for project CAN_node_3 ****
-make -j8 clean 
-rm -rf *
- 
