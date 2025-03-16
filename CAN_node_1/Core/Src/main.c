@@ -349,19 +349,9 @@ void read_trim_button ()
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-	static uint8_t 	period_read_ADC_cnt = 0;
 	if (htim->Instance == htim2.Instance)
 	{
-		if (period_read_ADC_cnt == 1)
-		{
-			HAL_ADC_Start_DMA(&hadc1, &adc_value, 2);
-		}
-		else if (period_read_ADC_cnt > 1)
-		{
-			HAL_ADC_Stop_DMA(&hadc1);
-			period_read_ADC_cnt = 0;
-		}
-		period_read_ADC_cnt++;
+    /* Todo interrupt handler */
 	}
 }
 
@@ -891,6 +881,7 @@ void StartTask02(void const * argument)
 				/* this task is get data from dashboard */
   /* Infinite loop */
 	status_motor = 1;
+  HAL_ADC_Start_DMA(&hadc1, &adc_value, 2);
 	for(;;)
 	{
 		osMessagePut(q_throttle_controlHandle, adc_value[0], 0);
