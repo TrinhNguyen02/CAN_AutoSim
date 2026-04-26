@@ -23,7 +23,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "can_handler.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -73,6 +73,18 @@ void StartDefaultTask(void const * argument);
 void StartTask02(void const * argument);
 
 /* USER CODE BEGIN PFP */
+
+/* Helper function to send CAN message with retry */
+HAL_StatusTypeDef can_send_message(uint32_t std_id, uint8_t* data, uint8_t dlc)
+{
+    tx_header.StdId = std_id;
+    tx_header.RTR = CAN_RTR_DATA;
+    tx_header.DLC = dlc;
+    
+    /* Use retry mechanism for reliable transmission */
+    return CAN_Send_WithRetry(&hcan, &tx_header, data, &tx_mailbox, CAN_RETRY_MAX);
+}
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	static uint8_t period_signal_cnt = 0;
@@ -84,12 +96,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			period_signal_cnt = 0;
 			control_light_IT();
 
-			tx_header.StdId = 0x211;
-			tx_header.RTR = CAN_RTR_DATA;
-			tx_header.DLC = 1;
-			if (HAL_CAN_AddTxMessage(&hcan, &tx_header, &light_msg, &tx_mailbox) != HAL_OK)
+			/* Send with retry mechanism */
+			if (can_send_message(0x211, &light_msg, 1) != HAL_OK)
 			{
-			   Error_Handler ();
+			    /* Handle transmission error */
 			}
 		}
 		period_signal_cnt++;
@@ -249,8 +259,18 @@ int main(void)
   MX_TIM2_Init();
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
+  /* Initialize CAN error handler */
+  CAN_ErrorHandler_Init(&hcan);
+  
   HAL_CAN_Start(&hcan);
-  HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO0_MSG_PENDING);
+  
+  /* Activate CAN notifications with error handling */
+  HAL_CAN_ActivateNotification(&hcan, 
+      CAN_IT_RX_FIFO0_MSG_PENDING |
+      CAN_IT_ERROR_WARNING |
+      CAN_IT_ERROR_PASSIVE |
+      CAN_IT_BUSOFF |
+      CAN_IT_LAST_ERROR_CODE);
 
   /* USER CODE END 2 */
 
@@ -556,6 +576,11 @@ void StartDefaultTask(void const * argument)
 * @retval None
 */
 /* USER CODE END Header_StartTask02 */
+uint32_t can_esr;
+uint8_t tec;
+uint8_t rec ;
+uint8_t last_error;
+
 void StartTask02(void const * argument)
 {
   /* USER CODE BEGIN StartTask02 */
@@ -563,7 +588,12 @@ void StartTask02(void const * argument)
 	osEvent q_message;
   for(;;)
   {
-	/* get element from light queue to send light node control light */
+	  can_esr = hcan.Instance->ESR;
+	  tec = (uint8_t)((can_esr & CAN_ESR_TEC_Msk) >> CAN_ESR_TEC_Pos);
+	   rec = (uint8_t)((can_esr & CAN_ESR_REC_Msk) >> CAN_ESR_REC_Pos);
+	   last_error = (uint8_t)((can_esr & CAN_ESR_LEC_Msk) >> CAN_ESR_LEC_Pos);
+
+	  /* get element from light queue to send light node control light */
 	q_message = osMessageGet(q_light_msgHandle, 0);
 
 	/* get a message in q_light_control if it is not empty */

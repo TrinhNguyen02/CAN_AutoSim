@@ -28,6 +28,7 @@
 #include "kalman_filter.h"
 #include "ssd1306_udf.h"
 #include "ssd1306_graphic.h"
+#include "can_handler.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -84,6 +85,10 @@ uint8_t 	status_motor = 0;		// 0 - stop, 1 - start, 2 - error
 uint8_t 	trim_button = 0;
 uint8_t 	light_sw = 0;
 enum light_mode_t light_mode = stop_light;
+
+/* CAN monitors for timeout detection */
+CAN_Monitor_t motor_fb_monitor;
+CAN_Monitor_t light_fb_monitor;
 
 /* USER CODE END PV */
 
@@ -150,6 +155,25 @@ void disp_status_motor (uint8_t _status_motor)
 	}
 }
 
+HAL_StatusTypeDef can_send_message(uint32_t std_id, uint8_t* data, uint8_t dlc)
+{
+    tx_header.StdId = std_id;
+    tx_header.RTR = CAN_RTR_DATA;
+    tx_header.DLC = dlc;
+    
+    /* Use retry mechanism for reliable transmission */
+    HAL_StatusTypeDef result = CAN_Send_WithRetry(&hcan, &tx_header, data, &tx_mailbox, CAN_RETRY_MAX);
+    
+    if (result != HAL_OK)
+    {
+        /* Log error or handle failed transmission */
+        CAN_Stats_t* stats = CAN_GetStats(&hcan);
+        // Could add debug output here
+    }
+    
+    return result;
+}
+
 void prepare_buff_send ()
 {
 	static uint16_t pre_throttle = 0;
@@ -174,16 +198,15 @@ void prepare_buff_send ()
 		if (abs(current_value - pre_throttle) > 10)
 		{
 			pre_throttle = current_value;
-			tx_header.StdId = 0x100;
-			tx_header.RTR = CAN_RTR_DATA;
-			tx_header.DLC = 2;
-
+			
 			tx_data[0] = *p_buff_ptr;
 			p_buff_ptr++;
 			tx_data[1] = *p_buff_ptr;
-			if (HAL_CAN_AddTxMessage(&hcan, &tx_header, tx_data, &tx_mailbox) != HAL_OK)
+			
+			/* Send with retry mechanism */
+			if (can_send_message(0x100, tx_data, 2) != HAL_OK)
 			{
-			   Error_Handler ();
+			    /* Handle transmission error - maybe set error flag */
 			}
 			clear_buff(&tx_data, sizeof(uint8_t)*8);
 			p_buff_ptr = &current_value;
@@ -201,16 +224,15 @@ void prepare_buff_send ()
 		if (abs(current_value - pre_steering) > 10)
 		{
 			pre_steering = current_value;
-			tx_header.StdId = 0x110;
-			tx_header.RTR = CAN_RTR_DATA;
-			tx_header.DLC = 2;
-
+			
 			tx_data[0] = *p_buff_ptr;
 			p_buff_ptr++;
 			tx_data[1] = *p_buff_ptr;
-			if (HAL_CAN_AddTxMessage(&hcan, &tx_header, tx_data, &tx_mailbox) != HAL_OK)
+			
+			/* Send with retry mechanism */
+			if (can_send_message(0x110, tx_data, 2) != HAL_OK)
 			{
-			   Error_Handler ();
+			    /* Handle transmission error */
 			}
 			clear_buff(&tx_data, sizeof(uint8_t)*8);
 			p_buff_ptr = &current_value;
@@ -227,17 +249,15 @@ void prepare_buff_send ()
 		if (current_value != pre_light)
 		{
 			pre_light = current_value;
-			tx_header.StdId = 0x210;
-			tx_header.RTR = CAN_RTR_DATA;
-			tx_header.DLC = 1;
-
+			
 			tx_data[0] = current_value;
-			if (HAL_CAN_AddTxMessage(&hcan, &tx_header, tx_data, &tx_mailbox) != HAL_OK)
+			
+			/* Send with retry mechanism */
+			if (can_send_message(0x210, tx_data, 1) != HAL_OK)
 			{
-			   Error_Handler ();
+			    /* Handle transmission error */
 			}
 			clear_buff(&tx_data, sizeof(uint8_t)*8);
-
 		}
 	}
 }
@@ -361,17 +381,75 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 	  {
 	    Error_Handler();
 	  }
+	  
 	  if (rx_header.StdId == 0x211)
 	  {
 		  displ_turn_signal(rx_data[0]);
+		  /* Update light feedback monitor */
+		  CAN_Monitor_Update(&light_fb_monitor);
 		  clear_buff(&rx_data, sizeof(uint8_t)*8);
 	  }
 	  if (rx_header.StdId == 0x101)
 	  {
 		  speed_ppr_fb = (uint16_t)(rx_data[0] | (rx_data[1] << 8));
 		  speed_rpm_fb = speed_ppr_fb * 1.4;
+		  /* Update motor feedback monitor */
+		  CAN_Monitor_Update(&motor_fb_monitor);
 		  clear_buff(&rx_data, sizeof(uint8_t)*8);
 	  }
+}
+
+/**
+ * @brief CAN error callback
+ *        Called when CAN error occurs
+ */
+void CAN_Error_Callback(CAN_HandleTypeDef *hcan, CAN_ErrorCode_t error_code)
+{
+    switch (error_code)
+    {
+        case CAN_ERROR_BUS_OFF:
+            /* Bus-off error - most severe */
+            status_motor = 0;  /* Stop motor for safety */
+            // Could add LED indication or display warning
+            break;
+            
+        case CAN_ERROR_WARNING:
+            /* Warning level error */
+            // Could log or indicate warning
+            break;
+            
+        case CAN_ERROR_PASSIVE:
+            /* Error passive state */
+            // Reduce transmission attempts
+            break;
+            
+        default:
+            break;
+    }
+}
+
+/**
+ * @brief Check CAN timeout monitors
+ *        Should be called periodically
+ */
+void check_can_timeouts(void)
+{
+    /* Check motor feedback timeout */
+    if (CAN_Monitor_CheckTimeout(&motor_fb_monitor))
+    {
+        /* Motor feedback lost - set error status */
+        if (status_motor == 1)  /* Only if motor was running */
+        {
+            status_motor = 2;  /* Set error status */
+        }
+    }
+    
+    /* Check light feedback timeout */
+    if (CAN_Monitor_CheckTimeout(&light_fb_monitor))
+    {
+        /* Light feedback lost - could indicate issue */
+        // Could add warning indication
+    }
 }
 
 void displ_turn_signal (uint8_t feedback_turn_signal)
@@ -448,9 +526,24 @@ int main(void)
   MX_TIM2_Init();
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
+  /* Initialize CAN error handler */
+  CAN_ErrorHandler_Init(&hcan);
+  
   HAL_CAN_Start(&hcan);
   HAL_TIM_Base_Start_IT(&htim2);
-  HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO0_MSG_PENDING);
+  
+  /* Activate CAN notifications with error handling */
+  HAL_CAN_ActivateNotification(&hcan, 
+      CAN_IT_RX_FIFO0_MSG_PENDING |
+      CAN_IT_ERROR_WARNING |
+      CAN_IT_ERROR_PASSIVE |
+      CAN_IT_BUSOFF |
+      CAN_IT_LAST_ERROR_CODE);
+  
+  /* Initialize CAN monitors for timeout detection */
+  CAN_Monitor_Init(&motor_fb_monitor, 1000);  /* 1s timeout for motor feedback */
+  CAN_Monitor_Init(&light_fb_monitor, 2000);  /* 2s timeout for light feedback */
+  
   kalman_1 = create_kalman(50, 50, 0.01);
   kalman_2 = create_kalman(50, 50, 0.01);
   /* USER CODE END 2 */

@@ -24,6 +24,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "motor.h"
+#include "can_handler.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -206,8 +207,18 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
+  /* Initialize CAN error handler */
+  CAN_ErrorHandler_Init(&hcan);
+  
   HAL_CAN_Start(&hcan);
-  HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO0_MSG_PENDING);
+  
+  /* Activate CAN notifications with error handling */
+  HAL_CAN_ActivateNotification(&hcan, 
+      CAN_IT_RX_FIFO0_MSG_PENDING |
+      CAN_IT_ERROR_WARNING |
+      CAN_IT_ERROR_PASSIVE |
+      CAN_IT_BUSOFF |
+      CAN_IT_LAST_ERROR_CODE);
 
   /* USER CODE END 2 */
 
@@ -586,6 +597,17 @@ static void MX_GPIO_Init(void)
   * @retval None
   */
 /* USER CODE END Header_StartDefaultTask */
+/* Helper function to send CAN message with retry for Node 3 */
+HAL_StatusTypeDef can_send_message_node3(uint32_t std_id, uint8_t* data, uint8_t dlc)
+{
+    tx_header.StdId = std_id;
+    tx_header.RTR = CAN_RTR_DATA;
+    tx_header.DLC = dlc;
+    
+    /* Use retry mechanism for reliable transmission */
+    return CAN_Send_WithRetry(&hcan, &tx_header, data, &tx_mailbox, CAN_RETRY_MAX);
+}
+
 void StartDefaultTask(void const * argument)
 {
   /* USER CODE BEGIN 5 */
@@ -594,16 +616,16 @@ void StartDefaultTask(void const * argument)
 	uint8_t * p_buff_ptr = &main_motor.actl_rpm;
 	for(;;)
 	{
-		tx_header.StdId = 0x101;
-		tx_header.RTR = CAN_RTR_DATA;
-		tx_header.DLC = 2;
 		tx_data[0] = *p_buff_ptr;
 		p_buff_ptr++;
 		tx_data[1] = *p_buff_ptr;
-		if (HAL_CAN_AddTxMessage(&hcan, &tx_header, tx_data, &tx_mailbox) != HAL_OK)
+		
+		/* Send with retry mechanism */
+		if (can_send_message_node3(0x101, tx_data, 2) != HAL_OK)
 		{
-		   Error_Handler ();
+		    /* Handle transmission error */
 		}
+		
 		clear_buff(&tx_data, sizeof(uint8_t)*8);
 		p_buff_ptr = &main_motor.actl_rpm;
 
